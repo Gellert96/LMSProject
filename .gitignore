@@ -1,0 +1,28 @@
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Django
+db.sqlite3
+media/
+staticfiles/
+
+# Environment variables
+.env
+.env.*
+
+# IDE
+.idea/
+.vscode/
+
+# Ruff and tests
+.ruff_cache/
+.pytest_cache/
+.coverage
+
+# System
+.DS_Store
+Thumbs.db

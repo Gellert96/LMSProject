@@ -1,0 +1,105 @@
+
+# LMSProject
+
+Учебный проект системы управления курсами и уроками на Django REST Framework.
+
+## Возможности
+
+- Собственная модель пользователя на основе AbstractBaseUser.
+- Авторизация пользователей по email.
+- Дополнительные поля пользователя: телефон, город, аватар.
+- Модели Course и Lesson со связью один ко многим.
+- CRUD для курсов через ModelViewSet.
+- CRUD для уроков через Generic API Views.
+- Административная панель Django.
+- Автоматические тесты API и моделей.
+
+## Технологии
+
+- Python
+- Django
+- Django REST Framework
+- SQLite
+- Pillow
+- Ruff
+
+## Установка
+
+Клонировать репозиторий:
+
+```bash
+git clone <URL_РЕПОЗИТОРИЯ>
+cd LMSProject
+```
+
+Создать виртуальное окружение:
+
+```bash
+python -m venv .venv
+```
+
+Активировать окружение в Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Установить зависимости:
+
+```bash
+pip install -r requirements.txt
+```
+
+Применить миграции:
+
+```bash
+python manage.py migrate
+```
+
+Запустить сервер:
+
+```bash
+python manage.py runserver
+```
+
+## API
+
+### Курсы
+
+| Метод | URL | Описание |
+|---|---|---|
+| GET | /api/courses/ | Список курсов |
+| POST | /api/courses/ | Создание курса |
+| GET | /api/courses/{id}/ | Получение курса |
+| PUT/PATCH | /api/courses/{id}/ | Обновление курса |
+| DELETE | /api/courses/{id}/ | Удаление курса |
+
+### Уроки
+
+| Метод | URL | Описание |
+|---|---|---|
+| GET | /api/lessons/ | Список уроков |
+| POST | /api/lessons/create/ | Создание урока |
+| GET | /api/lessons/{id}/ | Получение урока |
+| PUT/PATCH | /api/lessons/{id}/update/ | Обновление урока |
+| DELETE | /api/lessons/{id}/delete/ | Удаление урока |
+
+## Тестирование
+
+Запуск автоматических тестов:
+
+```bash
+python manage.py test
+```
+
+Проверка качества кода:
+
+```bash
+ruff check .
+```
+
+API также протестировано вручную через Postman.
+
+## Примечание
+
+Проект предназначен для обучения. Ограничения доступа к API пока не реализованы.
