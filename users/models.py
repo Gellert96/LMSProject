@@ -1,9 +1,11 @@
 from typing import ClassVar
 
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
+from lms.models import Course, Lesson
 from users.managers import UserManager
 
 
@@ -80,3 +82,76 @@ class User(AbstractBaseUser, PermissionsMixin):
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"
         ordering = ("email",)
+
+
+class Payment(models.Model):
+    """Платёж за курс или отдельный урок."""
+
+    class PaymentMethod(models.TextChoices):
+        CASH = "cash", "Наличные"
+        TRANSFER = "transfer", "Перевод на счёт"
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="payments",
+        verbose_name="Пользователь",
+    )
+
+    payment_date = models.DateField(
+        verbose_name="Дата оплаты",
+    )
+
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name="payments",
+        blank=True,
+        null=True,
+        verbose_name="Оплаченный курс",
+    )
+
+    lesson = models.ForeignKey(
+        Lesson,
+        on_delete=models.CASCADE,
+        related_name="payments",
+        blank=True,
+        null=True,
+        verbose_name="Оплаченный урок",
+    )
+
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name="Сумма оплаты",
+    )
+
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PaymentMethod.choices,
+        verbose_name="Способ оплаты",
+    )
+
+    def clean(self):
+        """Проверяет, что оплачен либо курс, либо урок."""
+        super().clean()
+
+        if bool(self.course_id) == bool(self.lesson_id):
+            raise ValidationError("Необходимо указать либо курс, либо урок.")
+
+    def __str__(self):
+        return f"{self.user.email} — {self.amount}"
+
+    class Meta:
+        verbose_name = "Платёж"
+        verbose_name_plural = "Платежи"
+        ordering = ("-payment_date",)
+        constraints: ClassVar[list[models.CheckConstraint]] = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(course__isnull=False, lesson__isnull=True)
+                    | models.Q(course__isnull=True, lesson__isnull=False)
+                ),
+                name="payment_exactly_one_item",
+            ),
+        ]

@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 from users.forms import AdminUserChangeForm, AdminUserCreationForm
-from users.models import User
+from users.models import Payment, User
 
 
 @admin.register(User)
@@ -114,3 +114,33 @@ class UserAdmin(BaseUserAdmin):
             },
         ),
     )
+
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    """Управление платежами в Django Admin."""
+
+    list_display = (
+        "id",
+        "user",
+        "payment_date",
+        "course",
+        "lesson",
+        "amount",
+        "payment_method",
+    )
+
+    list_filter = (
+        "payment_date",
+        "payment_method",
+        "course",
+        "lesson",
+    )
+
+    search_fields = (
+        "user__email",
+        "course__title",
+        "lesson__title",
+    )
+
+    ordering = ("-payment_date",)

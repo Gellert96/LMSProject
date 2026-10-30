@@ -2,6 +2,7 @@ from django.test import TestCase
 from rest_framework.test import APITestCase
 
 from lms.models import Course, Lesson
+from lms.serializers import CourseSerializer
 
 
 class CourseLessonTests(TestCase):
@@ -181,3 +182,49 @@ class LessonAPITests(APITestCase):
 
         self.assertEqual(response.status_code, 204)
         self.assertEqual(Lesson.objects.count(), 0)
+
+
+class CourseSerializerTests(TestCase):
+    """Проверка сериализатора курса."""
+
+    def setUp(self):
+        self.course = Course.objects.create(
+            title="Основы Python",
+            description="Курс для начинающих.",
+        )
+
+        self.lesson1 = Lesson.objects.create(
+            course=self.course,
+            title="Введение",
+            description="Первый урок.",
+            video_url="https://example.com/video1",
+        )
+
+        self.lesson2 = Lesson.objects.create(
+            course=self.course,
+            title="Переменные",
+            description="Второй урок.",
+            video_url="https://example.com/video2",
+        )
+
+    def test_lessons_count(self):
+        """Сериализатор возвращает количество уроков."""
+
+        serializer = CourseSerializer(self.course)
+
+        self.assertEqual(
+            serializer.data["lessons_count"],
+            2,
+        )
+
+    def test_nested_lessons(self):
+        """Сериализатор возвращает информацию об уроках."""
+
+        serializer = CourseSerializer(self.course)
+
+        lessons = serializer.data["lessons"]
+
+        self.assertEqual(len(lessons), 2)
+        self.assertEqual(lessons[0]["title"], "Введение")
+        self.assertEqual(lessons[1]["title"], "Переменные")
+        self.assertEqual(lessons[0]["course"], self.course.id)
