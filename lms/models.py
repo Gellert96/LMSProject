@@ -1,8 +1,16 @@
+from django.conf import settings
 from django.db import models
 
 
 class Course(models.Model):
     """Курс для онлайн-обучения."""
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="owned_courses",
+        verbose_name="Владелец курса",
+    )
 
     title = models.CharField(
         max_length=255,
@@ -31,6 +39,13 @@ class Course(models.Model):
 
 class Lesson(models.Model):
     """Урок, принадлежащий определённому курсу."""
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="owned_lessons",
+        verbose_name="Владелец урока",
+    )
 
     course = models.ForeignKey(
         Course,

@@ -25,6 +25,7 @@ class Command(BaseCommand):
             title="Python для начинающих",
             defaults={
                 "description": "Базовый курс программирования на Python.",
+                "owner": user,
             },
         )
 

@@ -1,46 +1,110 @@
-from rest_framework import generics, viewsets
+from rest_framework import generics, permissions, viewsets
 
 from lms.models import Course, Lesson
 from lms.serializers import CourseSerializer, LessonSerializer
+from users.permissions import IsModerator, IsOwner
 
 
 class CourseViewSet(viewsets.ModelViewSet):
-    """Полный CRUD для курсов через ViewSet."""
+    """CRUD курсов с разграничением прав доступа."""
 
-    queryset = Course.objects.all()
     serializer_class = CourseSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+
+        if not user.is_authenticated:
+            return Course.objects.none()
+
+        if user.groups.filter(name="moderators").exists():
+            return Course.objects.all()
+
+        return Course.objects.filter(owner=user)
+
+    def get_permissions(self):
+        if self.action == "create":
+            permission_classes = (
+                permissions.IsAuthenticated,
+                ~IsModerator,
+            )
+        elif self.action in ("update", "partial_update", "retrieve"):
+            permission_classes = (
+                permissions.IsAuthenticated,
+                IsModerator | IsOwner,
+            )
+        elif self.action == "destroy":
+            permission_classes = (
+                permissions.IsAuthenticated,
+                ~IsModerator,
+                IsOwner,
+            )
+        else:
+            permission_classes = (permissions.IsAuthenticated,)
+
+        return [permission() for permission in permission_classes]
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
 
 
 class LessonListAPIView(generics.ListAPIView):
-    """Получение списка уроков."""
+    """Список доступных пользователю уроков."""
 
-    queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        user = self.request.user
+
+        if user.groups.filter(name="moderators").exists():
+            return Lesson.objects.all()
+
+        return Lesson.objects.filter(owner=user)
 
 
 class LessonRetrieveAPIView(generics.RetrieveAPIView):
-    """Получение одного урока."""
+    """Просмотр своего урока или любого урока модератором."""
 
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
+    permission_classes = (
+        permissions.IsAuthenticated,
+        IsModerator | IsOwner,
+    )
 
 
 class LessonCreateAPIView(generics.CreateAPIView):
-    """Создание урока."""
+    """Создание урока обычным пользователем."""
 
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
+    permission_classes = (
+        permissions.IsAuthenticated,
+        ~IsModerator,
+    )
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
 
 
 class LessonUpdateAPIView(generics.UpdateAPIView):
-    """Редактирование урока."""
+    """Редактирование урока владельцем или модератором."""
 
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
+    permission_classes = (
+        permissions.IsAuthenticated,
+        IsModerator | IsOwner,
+    )
 
 
 class LessonDestroyAPIView(generics.DestroyAPIView):
-    """Удаление урока."""
+    """Удаление урока только его владельцем."""
 
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
+    permission_classes = (
+        permissions.IsAuthenticated,
+        ~IsModerator,
+        IsOwner,
+    )

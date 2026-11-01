@@ -1,21 +1,29 @@
+from django.contrib.auth import get_user_model
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import generics
-from rest_framework.filters import OrderingFilter
-from rest_framework.permissions import AllowAny
+from rest_framework import filters, generics, permissions
 
-from users.models import Payment, User
-from users.serializers import PaymentSerializer, UserSerializer
+from users.models import Payment
+from users.permissions import IsSelfOrReadOnly
+from users.serializers import (
+    PaymentSerializer,
+    PublicUserSerializer,
+    UserRegistrationSerializer,
+    UserSerializer,
+    UserUpdateSerializer,
+)
+
+User = get_user_model()
 
 
 class PaymentListAPIView(generics.ListAPIView):
-    """Список платежей с фильтрацией и сортировкой."""
+    """Список платежей текущего пользователя."""
 
-    queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
+    permission_classes = (permissions.IsAuthenticated,)
 
     filter_backends = (
         DjangoFilterBackend,
-        OrderingFilter,
+        filters.OrderingFilter,
     )
 
     filterset_fields = (
@@ -26,15 +34,47 @@ class PaymentListAPIView(generics.ListAPIView):
 
     ordering_fields = ("payment_date",)
 
-    ordering = ("-payment_date",)
+    def get_queryset(self):
+        """Пользователь видит только собственные платежи."""
+        return Payment.objects.filter(user=self.request.user)
 
 
-class UserRetrieveAPIView(generics.RetrieveAPIView):
-    """Просмотр профиля пользователя с историей платежей."""
+class UserRegistrationAPIView(generics.CreateAPIView):
+    """Регистрация новых пользователей без авторизации."""
 
-    queryset = User.objects.prefetch_related(
-        "payments__course__lessons",
-        "payments__lesson",
+    queryset = User.objects.all()
+    serializer_class = UserRegistrationSerializer
+
+    permission_classes = (permissions.AllowAny,)
+    authentication_classes = ()
+
+
+class UserRetrieveAPIView(generics.RetrieveUpdateDestroyAPIView):
+    """Просмотр, редактирование и удаление профиля."""
+
+    queryset = User.objects.all()
+    permission_classes = (
+        permissions.IsAuthenticated,
+        IsSelfOrReadOnly,
     )
-    serializer_class = UserSerializer
-    permission_classes = (AllowAny,)
+
+    def get_serializer_class(self):
+        """Выбирает сериализатор с учётом пользователя и метода."""
+
+        if self.request.method in ("PUT", "PATCH"):
+            return UserUpdateSerializer
+
+        requested_user_id = int(self.kwargs["pk"])
+
+        if self.request.user.pk == requested_user_id:
+            return UserSerializer
+
+        return PublicUserSerializer
+
+
+class UserListAPIView(generics.ListAPIView):
+    """Список пользователей с публичной информацией."""
+
+    queryset = User.objects.all()
+    serializer_class = PublicUserSerializer
+    permission_classes = (permissions.IsAuthenticated,)
