@@ -1,0 +1,42 @@
+﻿Name                                                           Stmts   Miss  Cover   Missing
+--------------------------------------------------------------------------------------------
+lms\__init__.py                                                    0      0   100%
+lms\admin.py                                                      18      1    94%   32
+lms\apps.py                                                        3      0   100%
+lms\migrations\0001_initial.py                                     6      0   100%
+lms\migrations\0002_course_owner_lesson_owner.py                   6      0   100%
+lms\migrations\0003_alter_course_owner_alter_lesson_owner.py       6      0   100%
+lms\migrations\0004_subscription.py                                6      0   100%
+lms\migrations\__init__.py                                         0      0   100%
+lms\models.py                                                     35      3    91%   32, 79, 115
+lms\paginators.py                                                  5      0   100%
+lms\serializers.py                                                34      2    94%   34, 39
+lms\test_pagination.py                                            34      0   100%
+lms\test_permissions.py                                          103      0   100%
+lms\test_subscriptions.py                                         69      0   100%
+lms\test_validators.py                                            28      0   100%
+lms\tests.py                                                     108      0   100%
+lms\urls.py                                                        6      0   100%
+lms\validators.py                                                 11      1    91%   20
+lms\views.py                                                      70      2    97%   23, 67
+users\__init__.py                                                  0      0   100%
+users\admin.py                                                    22      0   100%
+users\apps.py                                                      3      0   100%
+users\forms.py                                                    12      0   100%
+users\management\__init__.py                                       0      0   100%
+users\management\commands\__init__.py                              0      0   100%
+users\management\commands\create_moderators.py                     9      9     0%   1-14
+users\management\commands\load_payments.py                        24     24     0%   1-106
+users\managers.py                                                 22     11    50%   13, 30-43
+users\migrations\0001_initial.py                                   7      0   100%
+users\migrations\0002_payment.py                                   6      0   100%
+users\migrations\__init__.py                                       0      0   100%
+users\models.py                                                   52      7    87%   73, 76, 79, 137-140, 143
+users\permissions.py                                              14      0   100%
+users\serializers.py                                              49      3    94%   93, 104-105
+users\test_auth.py                                                51      0   100%
+users\tests.py                                                   102      0   100%
+users\urls.py                                                      3      0   100%
+users\views.py                                                    34      0   100%
+--------------------------------------------------------------------------------------------
+TOTAL                                                            958     63    93%

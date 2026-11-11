@@ -1,6 +1,10 @@
-from rest_framework import generics, permissions, viewsets
+from django.shortcuts import get_object_or_404
+from rest_framework import generics, permissions, status, viewsets
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from lms.models import Course, Lesson
+from lms.models import Course, Lesson, Subscription
+from lms.paginators import LMSPagination
 from lms.serializers import CourseSerializer, LessonSerializer
 from users.permissions import IsModerator, IsOwner
 
@@ -9,6 +13,8 @@ class CourseViewSet(viewsets.ModelViewSet):
     """CRUD курсов с разграничением прав доступа."""
 
     serializer_class = CourseSerializer
+
+    pagination_class = LMSPagination
 
     def get_queryset(self):
         user = self.request.user
@@ -52,6 +58,7 @@ class LessonListAPIView(generics.ListAPIView):
 
     serializer_class = LessonSerializer
     permission_classes = (permissions.IsAuthenticated,)
+    pagination_class = LMSPagination
 
     def get_queryset(self):
         user = self.request.user
@@ -108,3 +115,44 @@ class LessonDestroyAPIView(generics.DestroyAPIView):
         ~IsModerator,
         IsOwner,
     )
+
+
+class SubscriptionAPIView(APIView):
+    """Добавляет или удаляет подписку на курс."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        course_id = request.data.get("course_id")
+
+        if course_id is None:
+            return Response(
+                {"error": "Необходимо указать course_id."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        course = get_object_or_404(Course, pk=course_id)
+
+        subscription = Subscription.objects.filter(
+            user=user,
+            course=course,
+        )
+
+        if subscription.exists():
+            subscription.delete()
+
+            return Response(
+                {"message": "Подписка удалена."},
+                status=status.HTTP_200_OK,
+            )
+
+        Subscription.objects.create(
+            user=user,
+            course=course,
+        )
+
+        return Response(
+            {"message": "Подписка добавлена."},
+            status=status.HTTP_201_CREATED,
+        )

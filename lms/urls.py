@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from lms.views import (
@@ -8,13 +8,21 @@ from lms.views import (
     LessonListAPIView,
     LessonRetrieveAPIView,
     LessonUpdateAPIView,
+    SubscriptionAPIView,
 )
 
 router = DefaultRouter()
 router.register("courses", CourseViewSet, basename="course")
 
 urlpatterns = [
-    path("lessons/", LessonListAPIView.as_view(), name="lesson-list"),
+    # Курсы: CRUD через ViewSet
+    path("", include(router.urls)),
+    # Уроки: CRUD через отдельные обработчики
+    path(
+        "lessons/",
+        LessonListAPIView.as_view(),
+        name="lesson-list",
+    ),
     path(
         "lessons/create/",
         LessonCreateAPIView.as_view(),
@@ -35,6 +43,10 @@ urlpatterns = [
         LessonDestroyAPIView.as_view(),
         name="lesson-delete",
     ),
+    # Подписки: добавление или удаление подписки на курс
+    path(
+        "subscriptions/",
+        SubscriptionAPIView.as_view(),
+        name="subscription-toggle",
+    ),
 ]
-
-urlpatterns += router.urls

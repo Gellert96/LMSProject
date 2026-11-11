@@ -28,7 +28,7 @@ class CourseLessonTests(TestCase):
             course=self.course,
             title="Первый урок",
             description="Знакомство с Python.",
-            video_url="https://example.com/video1",
+            video_url="https://www.youtube.com/watch?v=video1",
         )
 
         self.lesson2 = Lesson.objects.create(
@@ -36,7 +36,7 @@ class CourseLessonTests(TestCase):
             course=self.course,
             title="Второй урок",
             description="Изучение переменных.",
-            video_url="https://example.com/video2",
+            video_url="https://www.youtube.com/watch?v=video2",
         )
 
     def test_course_has_multiple_lessons(self):
@@ -74,12 +74,15 @@ class CourseAPITests(APITestCase):
         )
 
     def test_list_courses(self):
-        """Получение списка своих курсов."""
+        """Получение списка своих курсов с пагинацией."""
 
         response = self.client.get("/api/courses/")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertIn("next", response.data)
+        self.assertIn("previous", response.data)
 
     def test_create_course(self):
         """Создание курса с автоматическим назначением владельца."""
@@ -97,6 +100,7 @@ class CourseAPITests(APITestCase):
         self.assertEqual(Course.objects.count(), 2)
 
         new_course = Course.objects.get(pk=response.data["id"])
+
         self.assertEqual(new_course.owner_id, self.user.id)
 
     def test_retrieve_course(self):
@@ -122,6 +126,7 @@ class CourseAPITests(APITestCase):
         self.assertEqual(response.status_code, 200)
 
         self.course.refresh_from_db()
+
         self.assertEqual(
             self.course.title,
             "Продвинутый Python",
@@ -133,6 +138,7 @@ class CourseAPITests(APITestCase):
         response = self.client.delete(f"/api/courses/{self.course.id}/")
 
         self.assertEqual(response.status_code, 204)
+
         self.assertFalse(Course.objects.filter(id=self.course.id).exists())
 
 
@@ -160,19 +166,22 @@ class LessonAPITests(APITestCase):
             course=self.course,
             title="Введение",
             description="Первый урок.",
-            video_url="https://example.com/video",
+            video_url="https://www.youtube.com/watch?v=video1",
         )
 
     def test_list_lessons(self):
-        """Получение списка своих уроков."""
+        """Получение списка своих уроков с пагинацией."""
 
         response = self.client.get("/api/lessons/")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertIn("next", response.data)
+        self.assertIn("previous", response.data)
 
     def test_create_lesson(self):
-        """Создание урока с автоматическим назначением владельца."""
+        """Создание урока с разрешённой ссылкой YouTube."""
 
         response = self.client.post(
             "/api/lessons/create/",
@@ -180,7 +189,7 @@ class LessonAPITests(APITestCase):
                 "course": self.course.id,
                 "title": "Переменные",
                 "description": "Второй урок.",
-                "video_url": "https://example.com/video2",
+                "video_url": "https://www.youtube.com/watch?v=video2",
             },
             format="json",
         )
@@ -189,8 +198,16 @@ class LessonAPITests(APITestCase):
         self.assertEqual(Lesson.objects.count(), 2)
 
         new_lesson = Lesson.objects.get(pk=response.data["id"])
-        self.assertEqual(new_lesson.owner_id, self.user.id)
-        self.assertEqual(new_lesson.course_id, self.course.id)
+
+        self.assertEqual(
+            new_lesson.owner_id,
+            self.user.id,
+        )
+
+        self.assertEqual(
+            new_lesson.course_id,
+            self.course.id,
+        )
 
     def test_retrieve_lesson(self):
         """Просмотр собственного урока."""
@@ -198,6 +215,7 @@ class LessonAPITests(APITestCase):
         response = self.client.get(f"/api/lessons/{self.lesson.id}/")
 
         self.assertEqual(response.status_code, 200)
+
         self.assertEqual(
             response.data["title"],
             "Введение",
@@ -208,16 +226,25 @@ class LessonAPITests(APITestCase):
 
         response = self.client.patch(
             f"/api/lessons/{self.lesson.id}/update/",
-            {"title": "Введение в Python"},
+            {
+                "title": "Введение в Python",
+                "video_url": "https://www.youtube.com/watch?v=updated",
+            },
             format="json",
         )
 
         self.assertEqual(response.status_code, 200)
 
         self.lesson.refresh_from_db()
+
         self.assertEqual(
             self.lesson.title,
             "Введение в Python",
+        )
+
+        self.assertEqual(
+            self.lesson.video_url,
+            "https://www.youtube.com/watch?v=updated",
         )
 
     def test_delete_lesson(self):
@@ -226,6 +253,7 @@ class LessonAPITests(APITestCase):
         response = self.client.delete(f"/api/lessons/{self.lesson.id}/delete/")
 
         self.assertEqual(response.status_code, 204)
+
         self.assertFalse(Lesson.objects.filter(id=self.lesson.id).exists())
 
     def test_delete_course_with_lessons(self):
@@ -259,7 +287,7 @@ class CourseSerializerTests(TestCase):
             course=self.course,
             title="Введение",
             description="Первый урок.",
-            video_url="https://example.com/video1",
+            video_url="https://www.youtube.com/watch?v=video1",
         )
 
         self.lesson2 = Lesson.objects.create(
@@ -267,7 +295,7 @@ class CourseSerializerTests(TestCase):
             course=self.course,
             title="Переменные",
             description="Второй урок.",
-            video_url="https://example.com/video2",
+            video_url="https://www.youtube.com/watch?v=video2",
         )
 
     def test_lessons_count(self):
@@ -290,10 +318,12 @@ class CourseSerializerTests(TestCase):
         self.assertEqual(len(lessons), 2)
         self.assertEqual(lessons[0]["title"], "Введение")
         self.assertEqual(lessons[1]["title"], "Переменные")
+
         self.assertEqual(
             lessons[0]["course"],
             self.course.id,
         )
+
         self.assertEqual(
             lessons[0]["owner"],
             self.user.id,

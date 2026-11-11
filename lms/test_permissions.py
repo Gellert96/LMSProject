@@ -29,6 +29,7 @@ class LMSPermissionTests(APITestCase):
         group, _ = Group.objects.get_or_create(
             name="moderators",
         )
+
         self.moderator.groups.add(group)
 
         self.course = Course.objects.create(
@@ -42,7 +43,7 @@ class LMSPermissionTests(APITestCase):
             course=self.course,
             title="Переменные",
             description="Первый урок",
-            video_url="https://example.com/video",
+            video_url="https://www.youtube.com/watch?v=video1",
         )
 
     def test_unauthorized_access_denied(self):
@@ -104,7 +105,7 @@ class LMSPermissionTests(APITestCase):
                 "course": self.course.id,
                 "title": "Функции",
                 "description": "Новый урок",
-                "video_url": "https://example.com/functions",
+                "video_url": "https://www.youtube.com/watch?v=functions",
             },
             format="json",
         )
@@ -167,7 +168,7 @@ class LMSPermissionTests(APITestCase):
                 "course": self.course.id,
                 "title": "Новый урок",
                 "description": "Проверка",
-                "video_url": "https://example.com/video2",
+                "video_url": "https://www.youtube.com/watch?v=video2",
             },
             format="json",
         )
@@ -194,7 +195,7 @@ class LMSPermissionTests(APITestCase):
                 "course": self.course.id,
                 "title": "Чужой урок",
                 "description": "Проверка безопасности",
-                "video_url": "https://example.com/video2",
+                "video_url": "https://www.youtube.com/watch?v=video2",
             },
             format="json",
         )
@@ -220,7 +221,11 @@ class LMSPermissionTests(APITestCase):
         self.assertEqual(response.status_code, 200)
 
         self.course.refresh_from_db()
-        self.assertEqual(self.course.title, "Продвинутый Python")
+
+        self.assertEqual(
+            self.course.title,
+            "Продвинутый Python",
+        )
 
     def test_owner_can_delete_own_course(self):
         """Владелец может удалять свой курс."""
@@ -230,6 +235,7 @@ class LMSPermissionTests(APITestCase):
         response = self.client.delete(f"/api/courses/{self.course.id}/")
 
         self.assertEqual(response.status_code, 204)
+
         self.assertFalse(Course.objects.filter(pk=self.course.id).exists())
 
     def test_other_user_cannot_update_course(self):
@@ -253,6 +259,7 @@ class LMSPermissionTests(APITestCase):
         response = self.client.delete(f"/api/courses/{self.course.id}/")
 
         self.assertEqual(response.status_code, 404)
+
         self.assertTrue(Course.objects.filter(pk=self.course.id).exists())
 
     def test_other_user_cannot_view_lesson(self):
@@ -285,6 +292,7 @@ class LMSPermissionTests(APITestCase):
         response = self.client.delete(f"/api/lessons/{self.lesson.id}/delete/")
 
         self.assertEqual(response.status_code, 403)
+
         self.assertTrue(Lesson.objects.filter(pk=self.lesson.id).exists())
 
     def test_moderator_can_view_and_update_lesson(self):
@@ -293,6 +301,7 @@ class LMSPermissionTests(APITestCase):
         self.client.force_authenticate(user=self.moderator)
 
         response = self.client.get(f"/api/lessons/{self.lesson.id}/")
+
         self.assertEqual(response.status_code, 200)
 
         response = self.client.patch(
@@ -300,7 +309,12 @@ class LMSPermissionTests(APITestCase):
             {"title": "Проверенный урок"},
             format="json",
         )
+
         self.assertEqual(response.status_code, 200)
 
         self.lesson.refresh_from_db()
-        self.assertEqual(self.lesson.title, "Проверенный урок")
+
+        self.assertEqual(
+            self.lesson.title,
+            "Проверенный урок",
+        )
