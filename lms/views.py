@@ -1,4 +1,8 @@
+from datetime import timedelta
+
+from django.db import transaction
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from drf_spectacular.utils import OpenApiResponse, extend_schema, inline_serializer
 from rest_framework import generics, permissions, serializers, status, viewsets
 from rest_framework.response import Response
@@ -7,7 +11,19 @@ from rest_framework.views import APIView
 from lms.models import Course, Lesson, Subscription
 from lms.paginators import LMSPagination
 from lms.serializers import CourseSerializer, LessonSerializer
+from lms.tasks import notify_course_subscribers
 from users.permissions import IsModerator, IsOwner
+
+
+def record_course_update(course, updated_at):
+    """Фиксирует обновление курса и планирует уведомление."""
+
+    previous_update = course.updated_at
+    course.updated_at = updated_at
+    course.save(update_fields=["updated_at"])
+
+    if previous_update is None or updated_at - previous_update >= timedelta(hours=4):
+        notify_course_subscribers.delay_on_commit(course.pk)
 
 
 class CourseViewSet(viewsets.ModelViewSet):
@@ -51,6 +67,13 @@ class CourseViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        course = Course.objects.select_for_update().get(pk=serializer.instance.pk)
+        serializer.instance = course
+        serializer.save()
+        record_course_update(course, timezone.now())
 
 
 class LessonListAPIView(generics.ListAPIView):
@@ -106,6 +129,12 @@ class LessonUpdateAPIView(generics.UpdateAPIView):
         permissions.IsAuthenticated,
         IsModerator | IsOwner,
     )
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        lesson = serializer.save()
+        course = Course.objects.select_for_update().get(pk=lesson.course_id)
+        record_course_update(course, timezone.now())
 
 
 class LessonDestroyAPIView(generics.DestroyAPIView):

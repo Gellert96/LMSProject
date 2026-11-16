@@ -40,6 +40,13 @@ class Course(models.Model):
         verbose_name="Цена курса в рублях",
     )
 
+    updated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        editable=False,
+        verbose_name="Последнее обновление материалов",
+    )
+
     def __str__(self):
         return self.title
 
