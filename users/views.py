@@ -1,5 +1,10 @@
 from django.contrib.auth import get_user_model
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import (
+    PolymorphicProxySerializer,
+    extend_schema,
+    extend_schema_view,
+)
 from rest_framework import filters, generics, permissions
 
 from users.models import Payment
@@ -18,6 +23,7 @@ User = get_user_model()
 class PaymentListAPIView(generics.ListAPIView):
     """Список платежей текущего пользователя."""
 
+    queryset = Payment.objects.none()
     serializer_class = PaymentSerializer
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -49,6 +55,21 @@ class UserRegistrationAPIView(generics.CreateAPIView):
     authentication_classes = ()
 
 
+@extend_schema_view(
+    get=extend_schema(
+        description=(
+            "Возвращает полный профиль текущего пользователя "
+            "или публичные данные другого пользователя."
+        ),
+        responses={
+            200: PolymorphicProxySerializer(
+                component_name="UserProfileResponse",
+                serializers=[UserSerializer, PublicUserSerializer],
+                resource_type_field_name=None,
+            ),
+        },
+    ),
+)
 class UserRetrieveAPIView(generics.RetrieveUpdateDestroyAPIView):
     """Просмотр, редактирование и удаление профиля."""
 
@@ -63,6 +84,9 @@ class UserRetrieveAPIView(generics.RetrieveUpdateDestroyAPIView):
 
         if self.request.method in ("PUT", "PATCH"):
             return UserUpdateSerializer
+
+        if getattr(self, "swagger_fake_view", False):
+            return PublicUserSerializer
 
         requested_user_id = int(self.kwargs["pk"])
 

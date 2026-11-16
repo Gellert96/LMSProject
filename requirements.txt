@@ -9,3 +9,4 @@ PyJWT==2.15.1
 ruff==0.17.2
 sqlparse==0.6.0
 tzdata==2026.5
+stripe==17.0.0

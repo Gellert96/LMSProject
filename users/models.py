@@ -90,6 +90,12 @@ class Payment(models.Model):
     class PaymentMethod(models.TextChoices):
         CASH = "cash", "Наличные"
         TRANSFER = "transfer", "Перевод на счёт"
+        STRIPE = "stripe", "Stripe Checkout"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Ожидает оплаты"
+        PAID = "paid", "Оплачен"
+        EXPIRED = "expired", "Срок оплаты истёк"
 
     user = models.ForeignKey(
         User,
@@ -99,6 +105,8 @@ class Payment(models.Model):
     )
 
     payment_date = models.DateField(
+        blank=True,
+        null=True,
         verbose_name="Дата оплаты",
     )
 
@@ -132,8 +140,21 @@ class Payment(models.Model):
         verbose_name="Способ оплаты",
     )
 
+    status = models.CharField(
+        max_length=10,
+        choices=Status.choices,
+        default=Status.PAID,
+        verbose_name="Статус платежа",
+    )
+
+    currency = models.CharField(max_length=3, blank=True)
+    stripe_product_id = models.CharField(max_length=255, blank=True)
+    stripe_price_id = models.CharField(max_length=255, blank=True)
+    stripe_session_id = models.CharField(max_length=255, blank=True)
+    payment_url = models.URLField(max_length=2048, blank=True)
+
     def clean(self):
-        """Проверяет, что оплачен либо курс, либо урок."""
+        """Проверяет, что платёж связан либо с курсом, либо с уроком."""
         super().clean()
 
         if bool(self.course_id) == bool(self.lesson_id):

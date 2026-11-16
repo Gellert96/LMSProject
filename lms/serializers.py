@@ -5,40 +5,35 @@ from lms.validators import validate_youtube_url
 
 
 class LessonSerializer(serializers.ModelSerializer):
-    """Сериализатор уроков с проверкой владельца и видеоссылки."""
+    """Сериализатор урока с проверкой ссылки на видео и курса."""
 
     owner = serializers.PrimaryKeyRelatedField(read_only=True)
-
-    video_url = serializers.URLField(
-        validators=[validate_youtube_url],
-    )
+    video_url = serializers.URLField(validators=[validate_youtube_url])
 
     class Meta:
         model = Lesson
         fields = (
             "id",
-            "owner",
-            "course",
             "title",
             "description",
             "preview",
             "video_url",
+            "course",
+            "owner",
         )
 
     def validate_course(self, value):
-        """Разрешает обычному пользователю выбирать только свои курсы."""
+        """Проверяет право добавить урок в выбранный курс."""
 
         request = self.context.get("request")
 
         if request is None or not request.user.is_authenticated:
             return value
 
-        user = request.user
-
-        if user.groups.filter(name="moderators").exists():
+        if self.instance is not None and self.instance.course_id == value.pk:
             return value
 
-        if value.owner_id != user.pk:
+        if value.owner_id != request.user.pk:
             raise serializers.ValidationError(
                 "Вы можете добавлять уроки только в свои курсы."
             )
@@ -47,37 +42,32 @@ class LessonSerializer(serializers.ModelSerializer):
 
 
 class CourseSerializer(serializers.ModelSerializer):
-    """Сериализатор курса с уроками и информацией о подписке."""
+    """Сериализатор курса с уроками и признаком подписки."""
 
     owner = serializers.PrimaryKeyRelatedField(read_only=True)
-
     lessons_count = serializers.SerializerMethodField()
-
-    lessons = LessonSerializer(
-        many=True,
-        read_only=True,
-    )
-
+    lessons = LessonSerializer(many=True, read_only=True)
     is_subscribed = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
         fields = (
             "id",
-            "owner",
             "title",
             "preview",
             "description",
+            "owner",
             "lessons_count",
             "lessons",
             "is_subscribed",
         )
 
-    def get_lessons_count(self, obj):
+    def get_lessons_count(self, obj) -> int:
         """Возвращает количество уроков курса."""
+
         return obj.lessons.count()
 
-    def get_is_subscribed(self, obj):
+    def get_is_subscribed(self, obj) -> bool:
         """Проверяет подписку текущего пользователя на курс."""
 
         request = self.context.get("request")
@@ -86,6 +76,6 @@ class CourseSerializer(serializers.ModelSerializer):
             return False
 
         return Subscription.objects.filter(
-            user=request.user,
-            course=obj,
+            user_id=request.user.pk,
+            course_id=obj.pk,
         ).exists()

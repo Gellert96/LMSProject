@@ -1,5 +1,6 @@
 from django.urls import path
 
+from users.stripe_views import StripeCheckoutAPIView, StripePaymentStatusAPIView
 from users.views import (
     PaymentListAPIView,
     UserListAPIView,
@@ -27,5 +28,15 @@ urlpatterns = [
         "users/<int:pk>/",
         UserRetrieveAPIView.as_view(),
         name="user-detail",
+    ),
+    path(
+        "payments/checkout/",
+        StripeCheckoutAPIView.as_view(),
+        name="stripe-checkout",
+    ),
+    path(
+        "payments/<int:pk>/sync/",
+        StripePaymentStatusAPIView.as_view(),
+        name="stripe-payment-sync",
     ),
 ]

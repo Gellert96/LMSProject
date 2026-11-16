@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import generics, permissions, status, viewsets
+from drf_spectacular.utils import OpenApiResponse, extend_schema, inline_serializer
+from rest_framework import generics, permissions, serializers, status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -13,7 +14,6 @@ class CourseViewSet(viewsets.ModelViewSet):
     """CRUD курсов с разграничением прав доступа."""
 
     serializer_class = CourseSerializer
-
     pagination_class = LMSPagination
 
     def get_queryset(self):
@@ -62,6 +62,9 @@ class LessonListAPIView(generics.ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
+
+        if not user.is_authenticated:
+            return Lesson.objects.none()
 
         if user.groups.filter(name="moderators").exists():
             return Lesson.objects.all()
@@ -117,12 +120,48 @@ class LessonDestroyAPIView(generics.DestroyAPIView):
     )
 
 
+class SubscriptionToggleResponseSerializer(serializers.Serializer):
+    """Сообщение о добавлении или удалении подписки."""
+
+    message = serializers.CharField()
+
+
 class SubscriptionAPIView(APIView):
     """Добавляет или удаляет подписку на курс."""
 
     permission_classes = (permissions.IsAuthenticated,)
 
-    def post(self, request, *args, **kwargs):
+    @extend_schema(
+        summary="Переключить подписку на курс",
+        description=(
+            "Создаёт подписку текущего пользователя на курс. "
+            "Если подписка уже существует, удаляет её."
+        ),
+        request=inline_serializer(
+            name="SubscriptionToggleRequest",
+            fields={"course_id": serializers.IntegerField()},
+        ),
+        responses={
+            200: OpenApiResponse(
+                response=SubscriptionToggleResponseSerializer,
+                description="Подписка удалена.",
+            ),
+            201: OpenApiResponse(
+                response=SubscriptionToggleResponseSerializer,
+                description="Подписка добавлена.",
+            ),
+            400: OpenApiResponse(
+                response=inline_serializer(
+                    name="SubscriptionErrorResponse",
+                    fields={"error": serializers.CharField()},
+                ),
+                description="Не указан course_id.",
+            ),
+            401: OpenApiResponse(description="Требуется аутентификация."),
+            404: OpenApiResponse(description="Курс не найден."),
+        },
+    )
+    def post(self, request):
         user = request.user
         course_id = request.data.get("course_id")
 
@@ -133,25 +172,16 @@ class SubscriptionAPIView(APIView):
             )
 
         course = get_object_or_404(Course, pk=course_id)
+        subscriptions = Subscription.objects.filter(user=user, course=course)
 
-        subscription = Subscription.objects.filter(
-            user=user,
-            course=course,
-        )
-
-        if subscription.exists():
-            subscription.delete()
-
+        if subscriptions.exists():
+            subscriptions.delete()
             return Response(
                 {"message": "Подписка удалена."},
                 status=status.HTTP_200_OK,
             )
 
-        Subscription.objects.create(
-            user=user,
-            course=course,
-        )
-
+        Subscription.objects.create(user=user, course=course)
         return Response(
             {"message": "Подписка добавлена."},
             status=status.HTTP_201_CREATED,

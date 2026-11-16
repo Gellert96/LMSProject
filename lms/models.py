@@ -1,4 +1,7 @@
+from decimal import Decimal
+
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 
 
@@ -26,6 +29,15 @@ class Course(models.Model):
 
     description = models.TextField(
         verbose_name="Описание курса",
+    )
+
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        validators=[MinValueValidator(Decimal("0.01"))],
+        verbose_name="Цена курса в рублях",
     )
 
     def __str__(self):
